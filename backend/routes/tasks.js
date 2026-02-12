@@ -52,7 +52,11 @@ router.post("/", async (req, res) => {
 // Update a task
 router.put("/:id", async (req, res) => {
   try {
-    const updated = await Task.findOneAndUpdate({ id: req.params.id }, req.body, { new: true });
+    const updated = await Task.findOneAndUpdate(
+      { id: req.params.id },
+      req.body,
+      { returnDocument: "after" }
+    );
     if (!updated) return res.status(404).json({ error: "Task not found" });
     res.json(updated);
   } catch (err) {

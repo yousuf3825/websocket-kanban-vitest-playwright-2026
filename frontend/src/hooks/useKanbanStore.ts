@@ -123,7 +123,7 @@ export function useKanbanStore() {
   );
 
   const moveTask = useCallback(
-    (taskId: string, toColumn: string, index: number) => {
+    async (taskId: string, toColumn: string, index: number) => {
       setTasks((prev: Task[]) => {
         const task = prev.find((t: Task) => t.id === taskId);
         if (!task) return prev;
@@ -133,6 +133,12 @@ export function useKanbanStore() {
         const others = without.filter((t: Task) => t.columnId !== toColumn);
         inColumn.splice(index, 0, updated);
         return [...others, ...inColumn];
+      });
+      // Persist columnId change to backend
+      await fetch(`/api/tasks/${taskId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ columnId: toColumn }),
       });
     },
     []
