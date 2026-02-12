@@ -5,7 +5,12 @@ const http = require("http");
 const { Server } = require("socket.io");
 const mongoose = require("mongoose");
 
+
 const app = express();
+app.use(express.json());
+// Mount tasks API
+app.use("/api/tasks", require("./routes/tasks"));
+
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
@@ -32,7 +37,7 @@ const taskSchema = new mongoose.Schema({
   createdAt: Date,
   updatedAt: Date,
 }, { collection: 'kanban-tasks' });
-const Task = mongoose.model("Task", taskSchema);
+const Task = mongoose.models.Task || mongoose.model("Task", taskSchema);
 
 io.on("connection", (socket) => {
   console.log("A user connected");

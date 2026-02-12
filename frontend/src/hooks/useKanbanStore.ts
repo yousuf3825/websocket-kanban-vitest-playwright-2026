@@ -1,5 +1,5 @@
-import { useState, useCallback } from "react";
-import type { Task, ColumnId, Priority, Category } from "@/types/kanban";
+import React, { useState, useCallback } from "react";
+import type { Task, Priority, Category } from "@/types/kanban";
 
 const generateId = () => Math.random().toString(36).substring(2, 10);
 
@@ -69,8 +69,33 @@ const SAMPLE_TASKS: Task[] = [
 export function useKanbanStore() {
   const [tasks, setTasks] = useState<Task[]>(SAMPLE_TASKS);
 
+  // Fetch tasks from backend on mount and update UI
+  // If backend fails, fallback to sample data
+  React.useEffect(() => {
+    fetch("/api/tasks")
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          // Transform backend data to match Task interface
+          setTasks(
+            data.map((t: any) => ({
+              id: t.id,
+              title: t.title,
+              description: t.description,
+              priority: t.priority,
+              category: t.category,
+              columnId: t.columnId || t.column || "todo",
+              attachments: Array.isArray(t.attachments) ? t.attachments : [],
+              createdAt: typeof t.createdAt === "number" ? t.createdAt : new Date(t.createdAt).getTime(),
+            }))
+          );
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const addTask = useCallback(
-    (data: { title: string; description: string; priority: Priority; category: Category }) => {
+    async (data: { title: string; description: string; priority: Priority; category: Category }) => {
       const task: Task = {
         id: generateId(),
         ...data,
@@ -78,31 +103,43 @@ export function useKanbanStore() {
         attachments: [],
         createdAt: Date.now(),
       };
-      setTasks((prev) => [...prev, task]);
-      return task;
+      // Send to backend for persistence
+      try {
+        const res = await fetch("/api/tasks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(task),
+        });
+        const saved = await res.json();
+        setTasks((prev) => [...prev, saved]);
+        return saved;
+      } catch (e) {
+        // fallback to local state if backend fails
+        setTasks((prev) => [...prev, task]);
+        return task;
+      }
     },
     []
   );
 
-  const updateTask = useCallback((id: string, updates: Partial<Omit<Task, "id">>) => {
-    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...updates } : t)));
-  }, []);
-
-  const moveTask = useCallback((taskId: string, toColumn: ColumnId, index: number) => {
-    setTasks((prev) => {
-      const task = prev.find((t) => t.id === taskId);
-      if (!task) return prev;
-      const without = prev.filter((t) => t.id !== taskId);
-      const updated = { ...task, columnId: toColumn };
-      const inColumn = without.filter((t) => t.columnId === toColumn);
-      const others = without.filter((t) => t.columnId !== toColumn);
-      inColumn.splice(index, 0, updated);
-      return [...others, ...inColumn];
-    });
-  }, []);
+  const moveTask = useCallback(
+    (taskId: string, toColumn: string, index: number) => {
+      setTasks((prev: Task[]) => {
+        const task = prev.find((t: Task) => t.id === taskId);
+        if (!task) return prev;
+        const without = prev.filter((t: Task) => t.id !== taskId);
+        const updated = { ...task, columnId: toColumn as any };
+        const inColumn = without.filter((t: Task) => t.columnId === toColumn);
+        const others = without.filter((t: Task) => t.columnId !== toColumn);
+        inColumn.splice(index, 0, updated);
+        return [...others, ...inColumn];
+      });
+    },
+    []
+  );
 
   const deleteTask = useCallback((id: string) => {
-    setTasks((prev) => prev.filter((t) => t.id !== id));
+    setTasks((prev: Task[]) => prev.filter((t: Task) => t.id !== id));
   }, []);
 
   const addAttachment = useCallback((taskId: string, file: File) => {
@@ -116,24 +153,24 @@ export function useKanbanStore() {
       url: URL.createObjectURL(file),
       type: file.type,
     };
-    setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, attachments: [...t.attachments, attachment] } : t))
+    setTasks((prev: Task[]) =>
+      prev.map((t: Task) => (t.id === taskId ? { ...t, attachments: [...t.attachments, attachment] } : t))
     );
     return { error: null };
   }, []);
 
   const getTasksByColumn = useCallback(
-    (columnId: ColumnId) => tasks.filter((t) => t.columnId === columnId),
+    (columnId: string) => tasks.filter((t: Task) => t.columnId === columnId),
     [tasks]
   );
 
   const stats = {
-    todo: tasks.filter((t) => t.columnId === "todo").length,
-    inProgress: tasks.filter((t) => t.columnId === "in-progress").length,
-    done: tasks.filter((t) => t.columnId === "done").length,
+    todo: tasks.filter((t: Task) => t.columnId === "todo").length,
+    inProgress: tasks.filter((t: Task) => t.columnId === "in-progress").length,
+    done: tasks.filter((t: Task) => t.columnId === "done").length,
     total: tasks.length,
-    completionPercent: tasks.length ? Math.round((tasks.filter((t) => t.columnId === "done").length / tasks.length) * 100) : 0,
+    completionPercent: tasks.length ? Math.round((tasks.filter((t: Task) => t.columnId === "done").length / tasks.length) * 100) : 0,
   };
 
-  return { tasks, addTask, updateTask, moveTask, deleteTask, addAttachment, getTasksByColumn, stats };
+  return { tasks, addTask, moveTask, deleteTask, addAttachment, getTasksByColumn, stats };
 }
