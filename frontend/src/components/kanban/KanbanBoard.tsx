@@ -14,7 +14,6 @@ export function KanbanBoard() {
     useKanbanStore();
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
-
   const handleDragEnd = (result: DropResult) => {
     if (!result.destination) return;
     const { draggableId, destination } = result;
@@ -37,27 +36,28 @@ export function KanbanBoard() {
         <CreateTaskDialog onCreateTask={addTask} />
       </header>
 
-
-      {/* Stats bar */}
-      <div className="px-6 py-4">
-        <ProgressChart stats={stats} />
-      </div>
-
-      {/* Board */}
-      <div className="flex-1 overflow-x-auto px-6 pb-6">
-        <DragDropContext onDragEnd={handleDragEnd}>
-          <div className="flex gap-4 h-full">
-            {COLUMNS.map((col) => (
-              <KanbanColumn
-                key={col.id}
-                column={col}
-                tasks={getTasksByColumn(col.id)}
-                onDeleteTask={deleteTask}
-                onSelectTask={setSelectedTask}
-              />
-            ))}
-          </div>
-        </DragDropContext>
+      {/* Main content: ProgressChart and Board side by side */}
+      <div className="flex flex-1 overflow-x-auto px-6 pb-6 gap-6">
+        {/* Progress Chart column */}
+        <div className="w-[320px] min-w-[280px] max-w-xs flex-shrink-0 flex flex-col pt-6">
+          <ProgressChart stats={stats} />
+        </div>
+        {/* Kanban Board columns */}
+        <div className="flex-1">
+          <DragDropContext onDragEnd={handleDragEnd}>
+            <div className="flex gap-4 h-full">
+              {COLUMNS.map((col) => (
+                <KanbanColumn
+                  key={col.id}
+                  column={col}
+                  tasks={getTasksByColumn(col.id)}
+                  onDeleteTask={deleteTask}
+                  onSelectTask={setSelectedTask}
+                />
+              ))}
+            </div>
+          </DragDropContext>
+        </div>
       </div>
 
       {/* Detail dialog */}
