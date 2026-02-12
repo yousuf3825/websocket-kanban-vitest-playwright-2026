@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { KanbanCalendar } from "./KanbanCalendar";
 import { DragDropContext, type DropResult } from "@hello-pangea/dnd";
 import type { Task, ColumnId } from "@/types/kanban";
 import { COLUMNS } from "@/types/kanban";
@@ -13,6 +14,9 @@ export function KanbanBoard() {
   const { addTask, updateTask, moveTask, deleteTask, addAttachment, getTasksByColumn, stats, tasks } =
     useKanbanStore();
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+
+  // Calendar state: selected date for filtering
+  const [calendarDate, setCalendarDate] = useState<Date | null>(null);
 
   const handleDragEnd = (result: DropResult) => {
     if (!result.destination) return;
@@ -36,6 +40,14 @@ export function KanbanBoard() {
         <CreateTaskDialog onCreateTask={addTask} />
       </header>
 
+      {/* Calendar */}
+      <div className="px-6 pt-4">
+        <KanbanCalendar
+          tasks={tasks}
+          onSelectDate={(date) => setCalendarDate(date)}
+        />
+      </div>
+
       {/* Stats bar */}
       <div className="px-6 py-4">
         <ProgressChart stats={stats} />
@@ -45,15 +57,29 @@ export function KanbanBoard() {
       <div className="flex-1 overflow-x-auto px-6 pb-6">
         <DragDropContext onDragEnd={handleDragEnd}>
           <div className="flex gap-4 h-full">
-            {COLUMNS.map((col) => (
-              <KanbanColumn
-                key={col.id}
-                column={col}
-                tasks={getTasksByColumn(col.id)}
-                onDeleteTask={deleteTask}
-                onSelectTask={setSelectedTask}
-              />
-            ))}
+            {COLUMNS.map((col) => {
+              // If a calendar date is selected, filter tasks for that date
+              const filteredTasks = calendarDate
+                ? getTasksByColumn(col.id).filter((t) => {
+                    if (!t.dueDate) return false;
+                    const due = new Date(t.dueDate);
+                    return (
+                      due.getFullYear() === calendarDate.getFullYear() &&
+                      due.getMonth() === calendarDate.getMonth() &&
+                      due.getDate() === calendarDate.getDate()
+                    );
+                  })
+                : getTasksByColumn(col.id);
+              return (
+                <KanbanColumn
+                  key={col.id}
+                  column={col}
+                  tasks={filteredTasks}
+                  onDeleteTask={deleteTask}
+                  onSelectTask={setSelectedTask}
+                />
+              );
+            })}
           </div>
         </DragDropContext>
       </div>

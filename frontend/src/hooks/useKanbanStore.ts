@@ -13,6 +13,7 @@ const SAMPLE_TASKS: Task[] = [
     columnId: "done",
     attachments: [],
     createdAt: Date.now() - 86400000 * 3,
+    dueDate: Date.now() - 86400000 * 2, // Example due date
   },
   {
     id: generateId(),
@@ -23,6 +24,7 @@ const SAMPLE_TASKS: Task[] = [
     columnId: "done",
     attachments: [],
     createdAt: Date.now() - 86400000 * 2,
+    dueDate: Date.now() - 86400000 * 1, // Example due date
   },
   {
     id: generateId(),
@@ -33,6 +35,7 @@ const SAMPLE_TASKS: Task[] = [
     columnId: "in-progress",
     attachments: [],
     createdAt: Date.now() - 86400000,
+    dueDate: undefined,
   },
   {
     id: generateId(),
@@ -43,6 +46,7 @@ const SAMPLE_TASKS: Task[] = [
     columnId: "in-progress",
     attachments: [],
     createdAt: Date.now() - 43200000,
+    dueDate: undefined,
   },
   {
     id: generateId(),
@@ -53,6 +57,7 @@ const SAMPLE_TASKS: Task[] = [
     columnId: "todo",
     attachments: [],
     createdAt: Date.now(),
+    dueDate: undefined,
   },
   {
     id: generateId(),
@@ -63,6 +68,7 @@ const SAMPLE_TASKS: Task[] = [
     columnId: "todo",
     attachments: [],
     createdAt: Date.now(),
+    dueDate: undefined,
   },
 ];
 
@@ -87,6 +93,7 @@ export function useKanbanStore() {
               columnId: t.columnId || t.column || "todo",
               attachments: Array.isArray(t.attachments) ? t.attachments : [],
               createdAt: typeof t.createdAt === "number" ? t.createdAt : new Date(t.createdAt).getTime(),
+              dueDate: t.dueDate ? (typeof t.dueDate === "number" ? t.dueDate : new Date(t.dueDate).getTime()) : undefined,
             }))
           );
         }
@@ -95,7 +102,7 @@ export function useKanbanStore() {
   }, []);
 
   const addTask = useCallback(
-    async (data: { title: string; description: string; priority: Priority; category: Category }) => {
+    async (data: { title: string; description: string; priority: Priority; category: Category; dueDate?: number }) => {
       const task: Task = {
         id: generateId(),
         ...data,
@@ -144,8 +151,14 @@ export function useKanbanStore() {
     []
   );
 
-  const deleteTask = useCallback((id: string) => {
-    setTasks((prev: Task[]) => prev.filter((t: Task) => t.id !== id));
+  // Soft delete: mark as deleted and delete from backend
+  const deleteTask = useCallback(async (id: string) => {
+    setTasks((prev: Task[]) => prev.map((t: Task) => t.id === id ? { ...t, deleted: true } : t));
+    try {
+      await fetch(`/api/tasks/${id}`, { method: "DELETE" });
+    } catch (e) {
+      // Optionally handle error (e.g., show toast)
+    }
   }, []);
 
   const addAttachment = useCallback((taskId: string, file: File) => {
@@ -165,17 +178,20 @@ export function useKanbanStore() {
     return { error: null };
   }, []);
 
+  // Exclude deleted tasks from selectors
   const getTasksByColumn = useCallback(
-    (columnId: string) => tasks.filter((t: Task) => t.columnId === columnId),
+    (columnId: string) => tasks.filter((t: Task) => t.columnId === columnId && !t.deleted),
     [tasks]
   );
 
   const stats = {
-    todo: tasks.filter((t: Task) => t.columnId === "todo").length,
-    inProgress: tasks.filter((t: Task) => t.columnId === "in-progress").length,
-    done: tasks.filter((t: Task) => t.columnId === "done").length,
-    total: tasks.length,
-    completionPercent: tasks.length ? Math.round((tasks.filter((t: Task) => t.columnId === "done").length / tasks.length) * 100) : 0,
+    todo: tasks.filter((t: Task) => t.columnId === "todo" && !t.deleted).length,
+    inProgress: tasks.filter((t: Task) => t.columnId === "in-progress" && !t.deleted).length,
+    done: tasks.filter((t: Task) => t.columnId === "done" && !t.deleted).length,
+    total: tasks.filter((t: Task) => !t.deleted).length,
+    completionPercent: tasks.filter((t: Task) => !t.deleted).length
+      ? Math.round((tasks.filter((t: Task) => t.columnId === "done" && !t.deleted).length / tasks.filter((t: Task) => !t.deleted).length) * 100)
+      : 0,
   };
 
   return { tasks, addTask, moveTask, deleteTask, addAttachment, getTasksByColumn, stats };

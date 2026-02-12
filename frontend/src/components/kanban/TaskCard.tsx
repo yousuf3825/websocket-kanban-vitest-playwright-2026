@@ -51,6 +51,11 @@ export function TaskCard({ task, index, onDelete, onSelect }: TaskCardProps) {
           <div className="flex items-center gap-1.5 flex-wrap">
             <PriorityBadge priority={task.priority} />
             <CategoryTag category={task.category} />
+            {task.dueDate && (
+              <span className="inline-flex items-center gap-0.5 text-xs text-blue-600 ml-auto">
+                Due: {new Date(task.dueDate).toLocaleDateString()}
+              </span>
+            )}
             {task.attachments.length > 0 && (
               <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground ml-auto">
                 <Paperclip className="h-3 w-3" />

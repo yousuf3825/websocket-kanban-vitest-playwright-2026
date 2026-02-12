@@ -18,6 +18,14 @@ export interface Task {
   columnId: ColumnId;
   attachments: Attachment[];
   createdAt: number;
+  /**
+   * Optional due date (timestamp) for calendar tracking
+   */
+  dueDate?: number;
+  /**
+   * Soft delete flag for task
+   */
+  deleted?: boolean;
 }
 
 export interface Column {

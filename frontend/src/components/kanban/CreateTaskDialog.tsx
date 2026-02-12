@@ -26,6 +26,7 @@ interface CreateTaskDialogProps {
     description: string;
     priority: Priority;
     category: Category;
+    dueDate?: number;
   }) => void;
 }
 
@@ -35,15 +36,23 @@ export function CreateTaskDialog({ onCreateTask }: CreateTaskDialogProps) {
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<Priority>("medium");
   const [category, setCategory] = useState<Category>("feature");
+  const [dueDate, setDueDate] = useState<string>("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
-    onCreateTask({ title: title.trim(), description: description.trim(), priority, category });
+    onCreateTask({
+      title: title.trim(),
+      description: description.trim(),
+      priority,
+      category,
+      dueDate: dueDate ? new Date(dueDate).getTime() : undefined,
+    });
     setTitle("");
     setDescription("");
     setPriority("medium");
     setCategory("feature");
+    setDueDate("");
     setOpen(false);
   };
 
@@ -78,6 +87,15 @@ export function CreateTaskDialog({ onCreateTask }: CreateTaskDialogProps) {
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Describe the task..."
               rows={3}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="dueDate">Due Date</Label>
+            <Input
+              id="dueDate"
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
