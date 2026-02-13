@@ -26,7 +26,7 @@ export function ProgressChart({ stats }: ProgressChartProps) {
   if (stats.total === 0) return null;
 
   return (
-    <div className="w-full min-h-screen flex items-center justify-center">
+    <div className="w-full min-h-screen  flex items-center justify-center">
   <div className="flex flex-col items-center p-10 bg-card rounded-2xl border border-border w-full max-w-4xl">
 
     {/* Huge Donut Chart (Top Row) */}
